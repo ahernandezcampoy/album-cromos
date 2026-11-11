@@ -16,7 +16,7 @@
         :alt="collection.title"
         class="w-32 h-44 object-cover rounded-xl shadow border border-gray-200 flex-shrink-0" 
       />
-      <div v-else class="w-32 h-44 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 font-bold flex-shrink-0">
+      <div v-else class="w-32 h-44 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 font-bold flex-shrink-0 text-center text-xs p-2">
         Sin Portada
       </div>
 
@@ -41,7 +41,7 @@
         </div>
 
         <div class="flex justify-between text-xs text-gray-500 pt-1 font-semibold">
-          <span>Conseguidos: {{ acquiredList.length }} / {{ allStickers.length }}</span>
+          <span>Conseguidos: {{ acquiredList.length }} / {{ totalStickersCount }}</span>
           <span>Faltan: {{ missingStickers.length }}</span>
         </div>
       </div>
@@ -54,7 +54,7 @@
           @click="filter = 'all'" 
           :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition', filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']"
         >
-          Todos ({{ allStickers.length }})
+          Todos ({{ totalStickersCount }})
         </button>
         <button 
           @click="filter = 'missing'" 
@@ -79,26 +79,45 @@
       </button>
     </div>
 
-    <!-- Rejilla de Cromos (Estilo Álbum) -->
-    <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
+    <!-- Secciones del Álbum (Bloques Separados) -->
+    <div class="space-y-8">
       <div 
-        v-for="sticker in filteredStickers" 
-        :key="sticker.id"
-        @click="toggleSticker(sticker.id)"
-        :class="[
-          'aspect-[3/4] rounded-xl flex flex-col items-center justify-center p-1 cursor-pointer select-none transition-all transform active:scale-90 border-2 font-mono font-bold text-sm sm:text-base relative overflow-hidden',
-          sticker.acquired 
-            ? 'bg-emerald-500 border-emerald-600 text-white shadow-md' 
-            : 'bg-white border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500'
-        ]"
+        v-for="section in filteredSections" 
+        :key="section.title" 
+        class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4"
       >
-        <span>{{ sticker.id }}</span>
-        
-        <!-- Icono Check si está conseguido -->
-        <div v-if="sticker.acquired" class="absolute bottom-1 right-1">
-          <svg class="w-3.5 h-3.5 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-          </svg>
+        <!-- Cabecera del Bloque -->
+        <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <span>{{ section.icon }}</span>
+            <span>{{ section.title }}</span>
+          </h2>
+          <span class="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+            {{ section.acquiredCount }} / {{ section.totalCount }} completados
+          </span>
+        </div>
+
+        <!-- Rejilla de Cromos de la Sección -->
+        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
+          <div 
+            v-for="sticker in section.stickers" 
+            :key="sticker.id"
+            @click="toggleSticker(sticker.id)"
+            :class="[
+              'aspect-[3/4] rounded-xl flex flex-col items-center justify-center p-1 cursor-pointer select-none transition-all transform active:scale-90 border-2 font-mono font-bold text-sm sm:text-base relative overflow-hidden',
+              sticker.acquired 
+                ? 'bg-emerald-500 border-emerald-600 text-white shadow-md' 
+                : 'bg-white border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500'
+            ]"
+          >
+            <span>{{ sticker.id }}</span>
+            
+            <div v-if="sticker.acquired" class="absolute bottom-1 right-1">
+              <svg class="w-3.5 h-3.5 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -120,13 +139,11 @@ const loading = ref(true)
 const collection = ref(null)
 const specialGroups = ref([])
 const acquiredList = ref([])
-const filter = ref('all') // 'all', 'missing', 'acquired'
+const filter = ref('all')
 
-// Cargar datos completos de la colección desde Supabase
 const loadCollectionData = async () => {
   loading.value = true
   try {
-    // 1. Colección
     const { data: col, error: colErr } = await supabase
       .from('collections')
       .select('*')
@@ -135,7 +152,6 @@ const loadCollectionData = async () => {
     if (colErr) throw colErr
     collection.value = col
 
-    // 2. Grupos Especiales
     const { data: groups, error: sgErr } = await supabase
       .from('special_groups')
       .select('*')
@@ -143,7 +159,6 @@ const loadCollectionData = async () => {
     if (sgErr) throw sgErr
     specialGroups.value = groups || []
 
-    // 3. Progreso
     const { data: prog, error: progErr } = await supabase
       .from('progress')
       .select('acquired')
@@ -152,6 +167,10 @@ const loadCollectionData = async () => {
     if (progErr) throw progErr
     acquiredList.value = prog?.acquired || []
 
+    // Actualizar el título de la pestaña del navegador
+    if (collection.value?.title) {
+      document.title = `${collection.value.title} - MisCromos`
+    }
   } catch (err) {
     console.error('Error cargando la colección:', err)
   } finally {
@@ -159,50 +178,83 @@ const loadCollectionData = async () => {
   }
 }
 
-// Generar array con todos los IDs de cromos (Regular + Especiales)
-const allStickers = computed(() => {
+// Estructura de secciones independientes (Regular + 1 por cada Grupo Especial)
+const sections = computed(() => {
   if (!collection.value) return []
-  const list = []
+  const result = []
 
-  // Regular (1 a N)
+  // 1. Bloque de Cromos Regulares
+  const regularStickers = []
   for (let i = 1; i <= collection.value.total_regular; i++) {
     const idStr = String(i)
-    list.push({
+    regularStickers.push({
       id: idStr,
       acquired: acquiredList.value.includes(idStr)
     })
   }
 
-  // Especiales (ej. X1 a X10)
+  result.push({
+    title: 'Cromos Regulares',
+    icon: '🎴', // <-- Cambiado de ⚽ a 🎴 (carta/cromo)
+    totalCount: collection.value.total_regular,
+    acquiredCount: regularStickers.filter(s => s.acquired).length,
+    stickers: regularStickers
+  })
+
+  // 2. Bloques por cada Grupo Especial (ej. Especiales "X", Especiales "F", etc.)
   specialGroups.value.forEach(group => {
+    const groupStickers = []
     for (let i = 1; i <= group.total; i++) {
       const idStr = `${group.prefix}${i}`
-      list.push({
+      groupStickers.push({
         id: idStr,
         acquired: acquiredList.value.includes(idStr)
       })
     }
+
+    result.push({
+      title: `Especiales - Prefijo "${group.prefix}"`,
+      icon: '⭐',
+      totalCount: group.total,
+      acquiredCount: groupStickers.filter(s => s.acquired).length,
+      stickers: groupStickers
+    })
   })
 
-  return list
+  return result
 })
+
+// Aplicar los filtros globales a cada bloque
+const filteredSections = computed(() => {
+  return sections.value
+    .map(section => {
+      let filtered = section.stickers
+      if (filter.value === 'missing') filtered = section.stickers.filter(s => !s.acquired)
+      if (filter.value === 'acquired') filtered = section.stickers.filter(s => s.acquired)
+      return {
+        ...section,
+        stickers: filtered
+      }
+    })
+    .filter(section => section.stickers.length > 0) // Muestra solo bloques con cromos según el filtro
+})
+
+// Todos los cromos en un array plano para métricas globales
+const allStickers = computed(() => {
+  return sections.value.flatMap(s => s.stickers)
+})
+
+const totalStickersCount = computed(() => allStickers.value.length)
 
 const missingStickers = computed(() => {
   return allStickers.value.filter(s => !s.acquired).map(s => s.id)
 })
 
-const filteredStickers = computed(() => {
-  if (filter.value === 'missing') return allStickers.value.filter(s => !s.acquired)
-  if (filter.value === 'acquired') return allStickers.value.filter(s => s.acquired)
-  return allStickers.value
-})
-
 const progressPercentage = computed(() => {
-  if (allStickers.value.length === 0) return 0
-  return Math.round((acquiredList.value.length / allStickers.value.length) * 100)
+  if (totalStickersCount.value === 0) return 0
+  return Math.round((acquiredList.value.length / totalStickersCount.value) * 100)
 })
 
-// Marcar/Desmarcar cromo y guardar en Supabase (Optimista)
 const toggleSticker = async (stickerId) => {
   const exists = acquiredList.value.includes(stickerId)
   if (exists) {
@@ -211,7 +263,6 @@ const toggleSticker = async (stickerId) => {
     acquiredList.value.push(stickerId)
   }
 
-  // Persistir en Supabase
   try {
     const { error } = await supabase
       .from('progress')
@@ -226,7 +277,6 @@ const toggleSticker = async (stickerId) => {
   }
 }
 
-// Copiar lista limpia al portapapeles
 const copyMissingList = () => {
   if (missingStickers.value.length === 0) {
     alert('¡Felicidades! Ya tienes la colección completa.')
