@@ -7,7 +7,7 @@
     No se encontró la colección.
   </div>
 
-  <div v-else class="max-w-6xl mx-auto space-y-6">
+  <div v-else class="max-w-6xl mx-auto space-y-6 pb-14">
     <!-- Cabecera de la Colección -->
     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 items-center md:items-start">
       <img 
@@ -121,11 +121,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Botón flotante Subir Arriba -->
+    <button
+      v-show="showScrollTop"
+      @click="scrollToTop"
+      aria-label="Subir arriba"
+      title="Subir arriba"
+      class="fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+      </svg>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../supabase'
 
 const props = defineProps({
@@ -288,5 +301,25 @@ const copyMissingList = () => {
 }
 
 onMounted(loadCollectionData)
+
+const showScrollTop = ref(false)
+
+const handleScroll = () => {
+  showScrollTop.value = window.scrollY > 300
+}
+
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  loadCollectionData()
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
+
 watch(() => props.collectionId, loadCollectionData)
 </script>

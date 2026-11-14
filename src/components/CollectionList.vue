@@ -36,9 +36,14 @@
             v-if="col.image_url" 
             :src="col.image_url" 
             :alt="col.title"
-            class="w-24 h-32 object-cover rounded-lg shadow-sm border border-gray-200 flex-shrink-0" 
+            @click="$emit('select', col.id)"
+            class="w-24 h-32 object-cover rounded-lg shadow-sm border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-85 transition" 
           />
-          <div v-else class="w-24 h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 font-bold flex-shrink-0 text-xs text-center p-2">
+          <div 
+            v-else 
+            @click="$emit('select', col.id)"
+            class="w-24 h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 font-bold flex-shrink-0 text-xs text-center p-2 cursor-pointer hover:border-blue-400 hover:text-blue-500 transition"
+          >
             Sin Portada
           </div>
 
